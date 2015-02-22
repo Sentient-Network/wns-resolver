@@ -14,7 +14,6 @@ This library will continue to evolve as the Wallet Name Service starts to includ
 
 ## Python Modules
 - [dnspython](http://www.dnspython.org) - http://www.dnspython.org
-- [requests](http://docs.python-requests.org/en/latest/) - http://docs.python-requests.org/en/latest/
 - [pyUnbound](https://www.unbound.net/documentation/pyunbound/) - https://www.unbound.net/documentation/pyunbound/
 
 **NOTE:** pyUnbound is **NOT** available via pip. Please follow the instructions below to install and setup PyUnbound

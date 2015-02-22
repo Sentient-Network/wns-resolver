@@ -3,8 +3,7 @@ __author__ = 'mdavid'
 from setuptools import setup
 
 install_requires = [
-    'dnspython>=1.12.0',
-    'requests>=2.5.1'
+    'dnspython>=1.12.0'
 ]
 
 test_requires = [
