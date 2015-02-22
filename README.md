@@ -22,11 +22,32 @@ This library will continue to evolve as the Wallet Name Service starts to includ
 # PyUnbound Setup
 This version of **wns-resolver** has been tested with Unbound v1.4.22. ([https://unbound.net/downloads/unbound-1.4.22.tar.gz](https://unbound.net/downloads/unbound-1.4.22.tar.gz))
 
+## Install via Repository
+
+**unbound-python** is available via installation by yum and is available in the [EPEL](https://fedoraproject.org/wiki/EPEL) repository.
+
+    [user@host ~]$ yum install -y unbound-python
+    
+This will install unbound-python, compat-libevent, and unbound-libs packages.
+
+## Manual Download, Installation and Setup 
+
 When ./configure-ing unbound, make sure to use the **--with-pyunbound** flag. This will make pyunbound available after make and make install
 
 Please refer to [https://www.unbound.net/documentation/pyunbound/install.html](https://www.unbound.net/documentation/pyunbound/install.html) for Unbound installation help.
 
 Use the [unbound-anchor](https://www.unbound.net/documentation/unbound-anchor.html) tool to setup the ICANN-supplied DNSSEC Root Trust Anchor.
+
+Make sure to set the **PYTHON_VERSION** environmental variable if you have multiple *Python* versions installed, otherwise
+the module will be installed for the default system *Python* version.
+
+    [user@host ~]$ export set PYTHON_VERSION=2.7
+    [user@host ~]$ wget https://unbound.net/downloads/unbound-1.4.22.tar.gz
+    [user@host ~]$ tar -xzf unbound-1.4.22-py.tar.gz
+    [user@host ~]$ cd unbound-1.4.22
+    [user@host ~]$ ./configure --with-pyunbound
+    [user@host ~]$ make
+    [user@host ~]$ make install
 
 # Usage
 
@@ -51,5 +72,9 @@ both ICANN and Namecoin Blockchain-based domains.
       File "/Users/mdavid/PycharmProjects/wns-resolver/wnsresolver/__init__.py", line 67, in resolve_wallet_name
         raise WalletNameUnavailableError
     WalletNameUnavailableError
+    
+## Additional Examples
+
+Additional examples are available in the examples/ directory
 
 
