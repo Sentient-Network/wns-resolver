@@ -38,7 +38,7 @@ Please refer to [https://www.unbound.net/documentation/pyunbound/install.html](h
 
 Use the [unbound-anchor](https://www.unbound.net/documentation/unbound-anchor.html) tool to setup the ICANN-supplied DNSSEC Root Trust Anchor.
 
-Make sure to set the **PYTHON_VERSION** environmental variable if you have multiple *Python* versions installed, otherwise
+Make sure to set the **PYTHON_VERSION** environment variable if you have multiple *Python* versions installed, otherwise
 the module will be installed for the default system *Python* version.
 
     [user@host ~]$ export set PYTHON_VERSION=2.7
