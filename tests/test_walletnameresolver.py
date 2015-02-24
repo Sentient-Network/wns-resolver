@@ -142,11 +142,11 @@ class TestResolveWalletName(TestCase):
         self.assertEqual(1, self.mockNamecoinResolver.call_count)
         self.assertEqual(2, self.mockNamecoinResolver.return_value.resolve.call_count)
 
-        self.assertEqual(wns_resolver.nc_host, self.mockNamecoinResolver.call_args[0][0])
-        self.assertEqual(wns_resolver.nc_user, self.mockNamecoinResolver.call_args[0][1])
-        self.assertEqual(wns_resolver.nc_password, self.mockNamecoinResolver.call_args[0][2])
-        self.assertEqual(wns_resolver.nc_port, self.mockNamecoinResolver.call_args[0][3])
-        self.assertEqual(wns_resolver.nc_tmpdir, self.mockNamecoinResolver.call_args[0][4])
+        self.assertEqual(wns_resolver.nc_host, self.mockNamecoinResolver.call_args[1]['host'])
+        self.assertEqual(wns_resolver.nc_user, self.mockNamecoinResolver.call_args[1]['user'])
+        self.assertEqual(wns_resolver.nc_password, self.mockNamecoinResolver.call_args[1]['password'])
+        self.assertEqual(wns_resolver.nc_port, self.mockNamecoinResolver.call_args[1]['port'])
+        self.assertEqual(wns_resolver.nc_tmpdir, self.mockNamecoinResolver.call_args[1]['temp_dir'])
 
     def test_namecoin_import_error(self):
 

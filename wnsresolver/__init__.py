@@ -49,11 +49,13 @@ class WalletNameResolver:
             try:
                 from bcresolver import NamecoinResolver
                 resolver = NamecoinResolver(
-                    self.nc_host,
-                    self.nc_user,
-                    self.nc_password,
-                    self.nc_port,
-                    self.nc_tmpdir
+                    resolv_conf=self.resolv_conf,
+                    dnssec_root_key=self.dnssec_root_key,
+                    host=self.nc_host,
+                    user=self.nc_user,
+                    password=self.nc_password,
+                    port=self.nc_port,
+                    temp_dir=self.nc_tmpdir
                 )
             except ImportError:
                 raise WalletNameNamecoinUnavailable('Namecoin Lookup Required the bcresolver module.')
