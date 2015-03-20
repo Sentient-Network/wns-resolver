@@ -18,6 +18,7 @@ setup(
     tests_require=test_requires,
     test_suite = 'tests',
     url='https://github.com/netkicorp/wns-resolver',
+    download_url='https://github.com/netkicorp/wns-resolver/tarball/0.0.1',
     platforms=['any'],
     license='BSD',
     author='mdavid',
