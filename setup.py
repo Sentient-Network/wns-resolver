@@ -12,7 +12,7 @@ test_requires = [
 
 setup(
     name='wnsresolver',
-    version='0.0.1',
+    version='0.0.2',
     packages=['wnsresolver'],
     install_requires=install_requires,
     tests_require=test_requires,
