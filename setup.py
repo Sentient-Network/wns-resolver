@@ -12,13 +12,13 @@ test_requires = [
 
 setup(
     name='wnsresolver',
-    version='0.0.3',
+    version='0.0.4',
     packages=['wnsresolver'],
     install_requires=install_requires,
     tests_require=test_requires,
     test_suite = 'tests',
     url='https://github.com/netkicorp/wns-resolver',
-    download_url='https://github.com/netkicorp/wns-resolver/tarball/0.0.3',
+    download_url='https://github.com/netkicorp/wns-resolver/tarball/0.0.4',
     platforms=['any'],
     license='BSD',
     author='mdavid',

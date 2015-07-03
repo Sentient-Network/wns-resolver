@@ -1,5 +1,8 @@
 __author__ = 'mdavid'
 
+import re
+import requests
+from base64 import b64decode
 from dns import rdatatype
 from unbound import ub_ctx, RR_TYPE_TXT, RR_CLASS_IN
 import os
@@ -17,6 +20,9 @@ class WalletNameNamecoinUnavailable(Exception):
     pass
 
 class WalletNameUnavailableError(Exception):
+    pass
+
+class WalletNameResolutionError(Exception):
     pass
 
 class WalletNameResolver:
@@ -95,7 +101,35 @@ class WalletNameResolver:
         else:
             # We got data
             txt = result.data.as_domain_list()
-            return txt[0]
+
+            # Reference implementation for serving BIP32 and BIP70 requests
+            try:
+                # BIP32/BIP70 data will be b64 encoded. Some wallet addresses fail decode.
+                # If it fails, assume wallet address or unknown and return
+                b64txt = b64decode(txt[0])
+            except:
+                return txt[0]
+
+            # Fully qualified bitcoin URI, return as is
+            if b64txt.startswith('bitcoin:'):
+                return b64txt
+            elif re.match(r'^https?:\/\/', b64txt):
+                try:
+                    # Try the URL
+                    response = requests.get(b64txt)
+                except:
+                    raise WalletNameResolutionError
+
+                try:
+                    # If JSON is returned and wallet_address is present, return it!
+                    return response.json().get('data').get('wallet_address')
+                except ValueError:
+                    # URL must be a payment request, return fully qualified bitcoin URI with payment URL
+                    return 'bitcoin:?r=%s' % b64txt
+            else:
+                # If you made it this far, you are a wallet address
+                return txt[0]
+
 
 if __name__ == '__main__':
 
@@ -105,5 +139,5 @@ if __name__ == '__main__':
         user='rpcuser',
         password='rpcpassword'
     )
-    result = wn_resolver.resolve_wallet_name('wallet.justinnewton.me', 'btc')
+    result = wn_resolver.resolve_wallet_name('wallet.netki.xyz', 'btc')
     print result

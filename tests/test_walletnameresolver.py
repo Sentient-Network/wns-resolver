@@ -155,3 +155,195 @@ class TestResolveWalletName(TestCase):
         wns_resolver = WalletNameResolver()
         self.assertRaises(WalletNameNamecoinUnavailable, wns_resolver.resolve_wallet_name, 'wallet.mattdavid.bit', 'btc')
         self.assertEqual(1, self.mockNamecoinResolver.call_count)
+
+class TestResolve(TestCase):
+    def setUp(self):
+        self.patcher1 = patch('wnsresolver.ub_ctx')
+        self.patcher2 = patch('wnsresolver.requests')
+        self.patcher3 = patch('wnsresolver.os')
+
+        self.mockUnbound = self.patcher1.start()
+        self.mockRequests = self.patcher2.start()
+        self.mockOS = self.patcher3.start()
+
+        self.mockResult = Mock()
+        self.mockResult.secure = True
+        self.mockResult.bogus = False
+        self.mockResult.havedata = True
+        self.mockResult.data.as_domain_list.return_value = ['Yml0Y29pbjo/cj1odHRwczovL21lcmNoYW50LmNvbS9wYXkucGhwP2glM0QyYTg2MjhmYzJmYmU=']
+        self.mockUnbound.return_value.resolve.return_value = (0, self.mockResult)
+
+    def test_go_right_bitcoin_uri(self):
+
+        wns_resolver = WalletNameResolver()
+        ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
+
+        # Validate response
+        self.assertEqual('bitcoin:?r=https://merchant.com/pay.php?h%3D2a8628fc2fbe', ret_val)
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockRequests.get.call_count)
+
+    def test_go_right_bip32_wallet_address(self):
+
+        # Setup Test case
+        self.mockResult.data.as_domain_list.return_value = ['aHR0cHM6Ly9iaXAzMmFkZHJlc3MuY29tL2dldG1pbmU=']
+        self.mockRequests.get.return_value.json.return_value = {'data': {'wallet_address': '1btcwalletaddress'}}
+
+        wns_resolver = WalletNameResolver()
+        ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
+
+        # Validate response
+        self.assertEqual('1btcwalletaddress', ret_val)
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(1, self.mockRequests.get.call_count)
+
+    def test_go_right_payment_request(self):
+
+        # Setup Test case
+        self.mockResult.data.as_domain_list.return_value = ['aHR0cHM6Ly9iaXA3MHBheW1lbnRyZXF1ZXN0LmNvbS9nZXRtaW5l']
+        self.mockRequests.get.return_value.json.side_effect = ValueError('not JSON!')
+
+        wns_resolver = WalletNameResolver()
+        ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
+
+        # Validate response
+        self.assertEqual('bitcoin:?r=https://bip70paymentrequest.com/getmine', ret_val)
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(1, self.mockRequests.get.call_count)
+
+    def test_go_right_b64decode_exception(self):
+
+        # Setup Test case
+        self.mockResult.data.as_domain_list.return_value = ['1MSK1PMnDZN4SLDQ6gB4c6GKRExfGD6Gb3']
+
+        wns_resolver = WalletNameResolver()
+        ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
+
+        # Validate response
+        self.assertEqual('1MSK1PMnDZN4SLDQ6gB4c6GKRExfGD6Gb3', ret_val)
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockRequests.get.call_count)
+
+    def test_trust_anchor_missing(self):
+
+        # Setup Test case
+        self.mockOS.path.isfile.return_value = False
+
+        wns_resolver = WalletNameResolver()
+        self.assertRaisesRegexp(
+            Exception,
+            'Trust anchor is missing or inaccessible',
+            wns_resolver.resolve,
+            'wallet.mattdavid.xyz',
+            'TXT'
+        )
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(0, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockRequests.get.call_count)
+
+    def test_status_not_0(self):
+
+        # Setup Test case
+        from wnsresolver import WalletNameLookupError
+        self.mockUnbound.return_value.resolve.return_value = (1, self.mockResult)
+
+        wns_resolver = WalletNameResolver()
+        self.assertRaises(
+            WalletNameLookupError,
+            wns_resolver.resolve,
+            'wallet.mattdavid.xyz',
+            'TXT'
+        )
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockRequests.get.call_count)
+
+    def test_insecure_result(self):
+
+        # Setup Test case
+        from wnsresolver import WalletNameLookupInsecureError
+        self.mockResult.secure = False
+
+        wns_resolver = WalletNameResolver()
+        self.assertRaises(
+            WalletNameLookupInsecureError,
+            wns_resolver.resolve,
+            'wallet.mattdavid.xyz',
+            'TXT'
+        )
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockRequests.get.call_count)
+
+    def test_bogus_result(self):
+
+        # Setup Test case
+        from wnsresolver import WalletNameLookupInsecureError
+        self.mockResult.bogus = True
+
+        wns_resolver = WalletNameResolver()
+        self.assertRaises(
+            WalletNameLookupInsecureError,
+            wns_resolver.resolve,
+            'wallet.mattdavid.xyz',
+            'TXT'
+        )
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockRequests.get.call_count)
+
+    def test_havedata_false(self):
+
+        # Setup Test case
+        self.mockResult.havedata = False
+
+        wns_resolver = WalletNameResolver()
+        ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
+
+        # Validate response
+        self.assertIsNone(ret_val)
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockRequests.get.call_count)
+
+    def test_wallet_name_resolution_error(self):
+
+        # Setup Test case
+        from wnsresolver import WalletNameResolutionError
+        self.mockResult.data.as_domain_list.return_value = ['aHR0cHM6Ly9iaXA3MHBheW1lbnRyZXF1ZXN0LmNvbS9nZXRtaW5l']
+        self.mockRequests.get.side_effect = Exception()
+
+        wns_resolver = WalletNameResolver()
+        self.assertRaises(
+            WalletNameResolutionError,
+            wns_resolver.resolve,
+            'wallet.mattdavid.xyz',
+            'TXT'
+        )
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(1, self.mockRequests.get.call_count)
