@@ -1,11 +1,12 @@
 __author__ = 'mdavid'
 
+import os
 import re
 import requests
 from base64 import b64decode
 from dns import rdatatype
 from unbound import ub_ctx, RR_TYPE_TXT, RR_CLASS_IN
-import os
+
 
 class WalletNameLookupError(Exception):
     pass
@@ -104,7 +105,7 @@ class WalletNameResolver:
 
             # Reference implementation for serving BIP32 and BIP70 requests
             try:
-                # BIP32/BIP70 data will be b64 encoded. Some wallet addresses fail decode.
+                # BIP32/BIP70 URL will be base64 encoded. Some wallet addresses fail decode.
                 # If it fails, assume wallet address or unknown and return
                 b64txt = b64decode(txt[0])
             except:
@@ -115,19 +116,13 @@ class WalletNameResolver:
                 return b64txt
             elif re.match(r'^https?:\/\/', b64txt):
                 try:
-                    # Try the URL
+                    # Try the URL. Returning response.text and expect a Bitcoin URI as delivered from Addressimo.
                     response = requests.get(b64txt)
-                except:
+                    return response.text
+                except Exception as e:
                     raise WalletNameResolutionError
-
-                try:
-                    # If JSON is returned and wallet_address is present, return it!
-                    return response.json().get('data').get('wallet_address')
-                except ValueError:
-                    # URL must be a payment request, return fully qualified bitcoin URI with payment URL
-                    return 'bitcoin:?r=%s' % b64txt
             else:
-                # If you made it this far, you are a wallet address
+                # If you made it this far, assume wallet address and return
                 return txt[0]
 
 
@@ -139,5 +134,5 @@ if __name__ == '__main__':
         user='rpcuser',
         password='rpcpassword'
     )
-    result = wn_resolver.resolve_wallet_name('wallet.netki.xyz', 'btc')
+    result = wn_resolver.resolve_wallet_name('bip70.netki.xyz', 'btc')
     print result

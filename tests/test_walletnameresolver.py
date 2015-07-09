@@ -173,7 +173,9 @@ class TestResolve(TestCase):
         self.mockResult.data.as_domain_list.return_value = ['Yml0Y29pbjo/cj1odHRwczovL21lcmNoYW50LmNvbS9wYXkucGhwP2glM0QyYTg2MjhmYzJmYmU=']
         self.mockUnbound.return_value.resolve.return_value = (0, self.mockResult)
 
-    def test_go_right_bitcoin_uri(self):
+        self.mockRequests.get.return_value.text = 'test response text'
+
+    def test_go_right_startswith_bitcoin_uri(self):
 
         wns_resolver = WalletNameResolver()
         ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
@@ -186,7 +188,7 @@ class TestResolve(TestCase):
         self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
         self.assertEqual(0, self.mockRequests.get.call_count)
 
-    def test_go_right_bip32_wallet_address(self):
+    def test_go_right_startswith_http(self):
 
         # Setup Test case
         self.mockResult.data.as_domain_list.return_value = ['aHR0cHM6Ly9iaXAzMmFkZHJlc3MuY29tL2dldG1pbmU=']
@@ -196,24 +198,7 @@ class TestResolve(TestCase):
         ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
 
         # Validate response
-        self.assertEqual('1btcwalletaddress', ret_val)
-
-        # Validate all calls
-        self.assertEqual(1, self.mockUnbound.call_count)
-        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
-        self.assertEqual(1, self.mockRequests.get.call_count)
-
-    def test_go_right_payment_request(self):
-
-        # Setup Test case
-        self.mockResult.data.as_domain_list.return_value = ['aHR0cHM6Ly9iaXA3MHBheW1lbnRyZXF1ZXN0LmNvbS9nZXRtaW5l']
-        self.mockRequests.get.return_value.json.side_effect = ValueError('not JSON!')
-
-        wns_resolver = WalletNameResolver()
-        ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
-
-        # Validate response
-        self.assertEqual('bitcoin:?r=https://bip70paymentrequest.com/getmine', ret_val)
+        self.assertEqual('test response text', ret_val)
 
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)
@@ -230,6 +215,22 @@ class TestResolve(TestCase):
 
         # Validate response
         self.assertEqual('1MSK1PMnDZN4SLDQ6gB4c6GKRExfGD6Gb3', ret_val)
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockRequests.get.call_count)
+
+    def test_go_right_end_of_chain(self):
+
+        # Setup Test case
+        self.mockResult.data.as_domain_list.return_value = ['dGhpc2lzZ3JlYXQx']
+
+        wns_resolver = WalletNameResolver()
+        ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
+
+        # Validate response
+        self.assertEqual('dGhpc2lzZ3JlYXQx', ret_val)
 
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)

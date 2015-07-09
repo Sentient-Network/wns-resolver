@@ -8,7 +8,10 @@ The Netki Wallet Name Resolver library allows you to quickly integrate the Walle
 currency platform. Using the Wallet Name Service allows you to avoid difficult Bitcoin, Dogecoin, Litecoin, etc. wallet addresses
 and instead use a much more memorable naming scheme that runs on top of DNS using DNSSEC to keep the Chain-of-Trust unbroken.
 
-This library will continue to evolve as the Wallet Name Service starts to include the BIP-32 and BIP-70 specs.
+The Netki Wallet Name Resolver library has evolved to handle base64 encoded endpoint URLs serving a raw BIP32 generated 
+wallet address or bitcoin URI pointing to a BIP70 payment request URL. When encountering such URLs after resolving a Wallet Name, the library will retrieve the URL 
+and return the response. As part of our reference implementation for BIP32 and BIP70 requests, the response is expected 
+in the BIP72 format as returned from [Addressimo](https://github.com/netkicorp/addressimo) - https://github.com/netkicorp/addressimo
 
 # Requirements
 
@@ -54,12 +57,26 @@ the module will be installed for the default system *Python* version.
 This can be used to resolve any Wallet Name. If our [bcresolver](https://github.com/netkicorp/blockchain-resolver) module is also installed, the WalletNameResolver will handle
 both ICANN and Namecoin Blockchain-based domains.
 
-## Success Example
+## Success Example (Wallet Name)
 
     >>> from wnsresolver import WalletNameResolver
     >>> wns_resolver = WalletNameResolver()
     >>> wns_resolver.resolve('wallet.justinnewton.me', 'btc')
     1P5faasXEt4BVgMaQjVo6TmvFXdGgZ8FF9
+
+## Success Example (BIP70 bitcoin URI)
+
+    >>> from wnsresolver import WalletNameResolver
+    >>> wns_resolver = WalletNameResolver()
+    >>> wns_resolver.resolve_wallet_name('bip70.netki.xyz', 'btc')
+    'bitcoin:1FHz8bpEE5qUZ9XhfjzAbCCwo5bT1HMNAc?amount=100&r=https%3A%2F%2Faddressimo.netki.com%2Fresolve%2F8cea7807e11e4c3898e0a2ee54feedc6%3Fbip70%3Dtrue%26amount%3D100'
+
+## Success Example (BIP32 bitcoin URI)
+
+    >>> from wnsresolver import WalletNameResolver
+    >>> wns_resolver = WalletNameResolver()
+    >>> wns_resolver.resolve_wallet_name('bip32.netki.xyz', 'btc')
+    'bitcoin:1FHz8bpEE5qUZ9XhfjzAbCCwo5bT1HMNAc'
 
 ## Wallet Name Not Found
 
