@@ -1,11 +1,15 @@
 __author__ = 'mdavid'
 
+import iptools
 import os
 import re
 import requests
+import socket
 from base64 import b64decode
 from dns import rdatatype
+from flask import request
 from unbound import ub_ctx, RR_TYPE_TXT, RR_CLASS_IN
+from urlparse import urlparse
 
 
 class WalletNameLookupError(Exception):
@@ -80,7 +84,6 @@ class WalletNameResolver:
 
         return resolver.resolve('_%s._wallet.%s' % (currency, name), 'TXT')
 
-
     def resolve(self, name, qtype):
 
         ctx = ub_ctx()
@@ -116,14 +119,57 @@ class WalletNameResolver:
                 return b64txt
             elif re.match(r'^https?:\/\/', b64txt):
                 try:
+                    # Identify localhost or link_local/multicast/private IPs and return without issuing a GET.
+                    lookup_url, return_data = WalletNameResolver.get_endpoint_host(b64txt)
+
+                    if return_data:
+                        return return_data
+
                     # Try the URL. Returning response.text and expect a Bitcoin URI as delivered from Addressimo.
-                    response = requests.get(b64txt)
+                    response = requests.get(lookup_url, headers={'X-Forwarded-For': '%s' % request.access_route[0]})
                     return response.text
-                except Exception as e:
-                    raise WalletNameResolutionError
+                except Exception:
+                    # Return base64 decoded value if we cannot perform a GET on the URL to allow requester to handle.
+                    return b64txt
             else:
                 # If you made it this far, assume wallet address and return
                 return txt[0]
+
+    @staticmethod
+    def get_endpoint_host(b64txt):
+        url = urlparse(b64txt)
+
+        if url.hostname == 'localhost':
+            return None, b64txt
+
+        if not url.hostname:
+            return None, b64txt
+
+        no_route_ip_range_list = iptools.IpRangeList(
+            iptools.ipv4.LOCALHOST,
+            iptools.ipv4.PRIVATE_NETWORK_10,
+            iptools.ipv4.PRIVATE_NETWORK_172_16,
+            iptools.ipv4.PRIVATE_NETWORK_192_168,
+            iptools.ipv4.LINK_LOCAL,
+            iptools.ipv4.MULTICAST,
+            iptools.ipv6.LOCALHOST,
+            iptools.ipv6.PRIVATE_NETWORK,
+            iptools.ipv6.LINK_LOCAL,
+            iptools.ipv6.MULTICAST
+        )
+
+        if not iptools.ipv4.validate_ip(url.hostname) and not iptools.ipv6.validate_ip(url.hostname):
+            # This will catch hostnames, determine if reachable, and return as a URL to fetch or raw value to return.
+            try:
+                socket.gethostbyname(url.hostname)
+                return url.geturl(), None
+            except socket.gaierror:
+                return None, b64txt
+
+        elif url.hostname in no_route_ip_range_list:
+            return None, b64txt
+
+        return url.geturl(), None
 
 
 if __name__ == '__main__':

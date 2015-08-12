@@ -38,6 +38,7 @@ class TestInit(TestCase):
         self.assertIsNone(wns_resolver.nc_password)
         self.assertIsNone(wns_resolver.nc_tmpdir)
 
+
 class TestNamecoinOptions(TestCase):
 
     def test_with_args(self):
@@ -72,6 +73,7 @@ class TestNamecoinOptions(TestCase):
         self.assertIsNone(wns_resolver.nc_user)
         self.assertIsNone(wns_resolver.nc_password)
         self.assertIsNone(wns_resolver.nc_tmpdir)
+
 
 class TestResolveWalletName(TestCase):
 
@@ -156,15 +158,20 @@ class TestResolveWalletName(TestCase):
         self.assertRaises(WalletNameNamecoinUnavailable, wns_resolver.resolve_wallet_name, 'wallet.mattdavid.bit', 'btc')
         self.assertEqual(1, self.mockNamecoinResolver.call_count)
 
+
 class TestResolve(TestCase):
     def setUp(self):
         self.patcher1 = patch('wnsresolver.ub_ctx')
         self.patcher2 = patch('wnsresolver.requests')
         self.patcher3 = patch('wnsresolver.os')
+        self.patcher4 = patch('wnsresolver.request')
+        self.patcher5 = patch('wnsresolver.WalletNameResolver.get_endpoint_host')
 
         self.mockUnbound = self.patcher1.start()
         self.mockRequests = self.patcher2.start()
         self.mockOS = self.patcher3.start()
+        self.mockRequest = self.patcher4.start()
+        self.mockGetEndpointHost = self.patcher5.start()
 
         self.mockResult = Mock()
         self.mockResult.secure = True
@@ -174,6 +181,7 @@ class TestResolve(TestCase):
         self.mockUnbound.return_value.resolve.return_value = (0, self.mockResult)
 
         self.mockRequests.get.return_value.text = 'test response text'
+        self.mockRequest.access_route = ['8.8.8.8']
 
     def test_go_right_startswith_bitcoin_uri(self):
 
@@ -186,13 +194,14 @@ class TestResolve(TestCase):
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)
         self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockGetEndpointHost.call_count)
         self.assertEqual(0, self.mockRequests.get.call_count)
 
-    def test_go_right_startswith_http(self):
+    def test_go_right_startswith_http_get_endpoint_returns_lookup_url(self):
 
         # Setup Test case
+        self.mockGetEndpointHost.return_value = 'lookup_url_returned', None
         self.mockResult.data.as_domain_list.return_value = ['aHR0cHM6Ly9iaXAzMmFkZHJlc3MuY29tL2dldG1pbmU=']
-        self.mockRequests.get.return_value.json.return_value = {'data': {'wallet_address': '1btcwalletaddress'}}
 
         wns_resolver = WalletNameResolver()
         ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
@@ -200,10 +209,33 @@ class TestResolve(TestCase):
         # Validate response
         self.assertEqual('test response text', ret_val)
 
+        # Validate GET contains b64txt and headers
+        self.assertEqual('lookup_url_returned', self.mockRequests.get.call_args[0][0])
+        self.assertEqual({'X-Forwarded-For': '8.8.8.8'}, self.mockRequests.get.call_args[1].get('headers'))
+
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)
         self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(1, self.mockGetEndpointHost.call_count)
         self.assertEqual(1, self.mockRequests.get.call_count)
+
+    def test_go_right_startswith_http_get_endpoint_returns_return_data(self):
+
+        # Setup test case
+        self.mockGetEndpointHost.return_value = None, 'myretdata'
+        self.mockResult.data.as_domain_list.return_value = ['aHR0cHM6Ly9iaXAzMmFkZHJlc3MuY29tL2dldG1pbmU=']
+
+        wns_resolver = WalletNameResolver()
+        ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
+
+        # Validate response
+        self.assertEqual('myretdata', ret_val)
+
+        # Validate all calls
+        self.assertEqual(1, self.mockUnbound.call_count)
+        self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(1, self.mockGetEndpointHost.call_count)
+        self.assertEqual(0, self.mockRequests.get.call_count)
 
     def test_go_right_b64decode_exception(self):
 
@@ -219,6 +251,7 @@ class TestResolve(TestCase):
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)
         self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockGetEndpointHost.call_count)
         self.assertEqual(0, self.mockRequests.get.call_count)
 
     def test_go_right_end_of_chain(self):
@@ -235,6 +268,7 @@ class TestResolve(TestCase):
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)
         self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockGetEndpointHost.call_count)
         self.assertEqual(0, self.mockRequests.get.call_count)
 
     def test_trust_anchor_missing(self):
@@ -254,6 +288,7 @@ class TestResolve(TestCase):
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)
         self.assertEqual(0, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockGetEndpointHost.call_count)
         self.assertEqual(0, self.mockRequests.get.call_count)
 
     def test_status_not_0(self):
@@ -273,6 +308,7 @@ class TestResolve(TestCase):
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)
         self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockGetEndpointHost.call_count)
         self.assertEqual(0, self.mockRequests.get.call_count)
 
     def test_insecure_result(self):
@@ -292,6 +328,7 @@ class TestResolve(TestCase):
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)
         self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockGetEndpointHost.call_count)
         self.assertEqual(0, self.mockRequests.get.call_count)
 
     def test_bogus_result(self):
@@ -311,6 +348,7 @@ class TestResolve(TestCase):
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)
         self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockGetEndpointHost.call_count)
         self.assertEqual(0, self.mockRequests.get.call_count)
 
     def test_havedata_false(self):
@@ -327,24 +365,90 @@ class TestResolve(TestCase):
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)
         self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(0, self.mockGetEndpointHost.call_count)
         self.assertEqual(0, self.mockRequests.get.call_count)
 
-    def test_wallet_name_resolution_error(self):
+    def test_exception_during_lookup_url_get(self):
 
         # Setup Test case
-        from wnsresolver import WalletNameResolutionError
+        self.mockGetEndpointHost.return_value = 'urls', None
         self.mockResult.data.as_domain_list.return_value = ['aHR0cHM6Ly9iaXA3MHBheW1lbnRyZXF1ZXN0LmNvbS9nZXRtaW5l']
         self.mockRequests.get.side_effect = Exception()
 
         wns_resolver = WalletNameResolver()
-        self.assertRaises(
-            WalletNameResolutionError,
-            wns_resolver.resolve,
-            'wallet.mattdavid.xyz',
-            'TXT'
-        )
+        ret_val = wns_resolver.resolve('wallet.mattdavid.xyz', 'TXT')
+
+        # Validate response
+        self.assertEqual('https://bip70paymentrequest.com/getmine', ret_val)
 
         # Validate all calls
         self.assertEqual(1, self.mockUnbound.call_count)
         self.assertEqual(1, self.mockUnbound.return_value.resolve.call_count)
+        self.assertEqual(1, self.mockGetEndpointHost.call_count)
         self.assertEqual(1, self.mockRequests.get.call_count)
+
+
+class TestGetEndpointHost(TestCase):
+    def setUp(self):
+        self.patcher1 = patch('wnsresolver.socket')
+        self.mockSocket = self.patcher1.start()
+
+    def test_go_right_valid_hostname(self):
+
+        wns_resolver = WalletNameResolver()
+        return_url, return_data = wns_resolver.get_endpoint_host('http://www.example.com/pr/uuid')
+
+        self.assertEqual('http://www.example.com/pr/uuid', return_url)
+        self.assertIsNone(return_data)
+
+    def test_go_right_valid_ipv4(self):
+
+        wns_resolver = WalletNameResolver()
+        return_url, return_data = wns_resolver.get_endpoint_host('https://8.8.8.8/pr/uuid')
+
+        self.assertEqual('https://8.8.8.8/pr/uuid', return_url)
+        self.assertIsNone(return_data)
+
+    def test_go_right_valid_ipv6(self):
+
+        wns_resolver = WalletNameResolver()
+        return_url, return_data = wns_resolver.get_endpoint_host('https://[2001:4860:4860::8888]/pr/uuid')
+
+        self.assertEqual('https://[2001:4860:4860::8888]/pr/uuid', return_url)
+        self.assertIsNone(return_data)
+
+    def test_hostname_localhost(self):
+
+        wns_resolver = WalletNameResolver()
+        return_url, return_data = wns_resolver.get_endpoint_host('https://localhost/pr/uuid')
+
+        self.assertIsNone(return_url)
+        self.assertEqual('https://localhost/pr/uuid', return_data)
+
+    def test_hostname_is_none(self):
+
+        wns_resolver = WalletNameResolver()
+        return_url, return_data = wns_resolver.get_endpoint_host('https://')
+
+        self.assertIsNone(return_url)
+        self.assertEqual('https://', return_data)
+
+    def test_gethostbyname_returns_socket_gaierror(self):
+
+        import socket
+        self.mockSocket.gaierror = socket.gaierror
+        self.mockSocket.gethostbyname.side_effect = self.mockSocket.gaierror
+
+        wns_resolver = WalletNameResolver()
+        return_url, return_data = wns_resolver.get_endpoint_host('https://nonexistent_hostname/pr/uuid')
+
+        self.assertIsNone(return_url)
+        self.assertEqual('https://nonexistent_hostname/pr/uuid', return_data)
+
+    def test_no_route_ip(self):
+
+        wns_resolver = WalletNameResolver()
+        return_url, return_data = wns_resolver.get_endpoint_host('https://192.168.100.1/pr/uuid')
+
+        self.assertIsNone(return_url)
+        self.assertEqual('https://192.168.100.1/pr/uuid', return_data)
