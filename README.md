@@ -1,3 +1,5 @@
+![PyPI](https://img.shields.io/pypi/dm/wnsresolver.svg)
+
 # WNS Resolver
 
 Netki Wallet Name Resolver Library
