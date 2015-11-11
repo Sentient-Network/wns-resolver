@@ -50,6 +50,37 @@ class WalletNameResolver:
         self.nc_password = password
         self.nc_tmpdir = tmpdir
 
+    def resolve_available_currencies(self, name):
+
+        if not name:
+            raise AttributeError('resolve_wallet_name requires both name and currency')
+
+        if name.endswith('.bit'):
+            # Namecoin Resolution Required
+            try:
+                from bcresolver import NamecoinResolver
+                resolver = NamecoinResolver(
+                    resolv_conf=self.resolv_conf,
+                    dnssec_root_key=self.dnssec_root_key,
+                    host=self.nc_host,
+                    user=self.nc_user,
+                    password=self.nc_password,
+                    port=self.nc_port,
+                    temp_dir=self.nc_tmpdir
+                )
+            except ImportError:
+                raise WalletNameNamecoinUnavailable('Namecoin Lookup Required the bcresolver module.')
+        else:
+            # Default ICANN Resolution
+            resolver = self
+
+        # Resolve Top-Level Available Currencies
+        currency_list_str = resolver.resolve('_wallet.%s' % name, 'TXT')
+        if not currency_list_str:
+            return []
+        return currency_list_str.split()
+
+
     def resolve_wallet_name(self, name, currency):
 
         if not name or not currency:

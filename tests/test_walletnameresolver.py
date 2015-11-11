@@ -74,6 +74,66 @@ class TestNamecoinOptions(TestCase):
         self.assertIsNone(wns_resolver.nc_password)
         self.assertIsNone(wns_resolver.nc_tmpdir)
 
+class TestResolveAvailableCurrencies(TestCase):
+
+    def setUp(self):
+
+        self.patcher1 = patch('wnsresolver.WalletNameResolver.resolve')
+        self.patcher2 = patch('bcresolver.NamecoinResolver')
+
+        self.mockWnsResolver = self.patcher1.start()
+        self.mockNamecoinResolver = self.patcher2.start()
+
+        self.mockWnsResolver.side_effect = [
+            'btc ltc dgc'
+        ]
+
+        self.mockNamecoinResolver.return_value.resolve.side_effect = [
+            'btc ltc dgc',
+        ]
+
+    def tearDown(self):
+
+        self.patcher1.stop()
+        self.patcher2.stop()
+
+    def test_go_right(self):
+
+        wns_resolver = WalletNameResolver()
+        ret_val = wns_resolver.resolve_available_currencies('wallet.mattdavid.xyz')
+
+        self.assertEqual(['btc','ltc','dgc'], ret_val)
+        self.assertEqual(1, self.mockWnsResolver.call_count)
+
+    def test_no_name(self):
+
+        wns_resolver = WalletNameResolver()
+        self.assertRaises(AttributeError, wns_resolver.resolve_available_currencies, None)
+        self.assertEqual(0, self.mockWnsResolver.call_count)
+
+    def test_namecoin_go_right(self):
+
+        wns_resolver = WalletNameResolver()
+        ret_val = wns_resolver.resolve_available_currencies('wallet.mattdavid.bit')
+
+        self.assertEqual(['btc','ltc','dgc'], ret_val)
+        self.assertEqual(1, self.mockNamecoinResolver.call_count)
+        self.assertEqual(1, self.mockNamecoinResolver.return_value.resolve.call_count)
+
+        self.assertEqual(wns_resolver.nc_host, self.mockNamecoinResolver.call_args[1]['host'])
+        self.assertEqual(wns_resolver.nc_user, self.mockNamecoinResolver.call_args[1]['user'])
+        self.assertEqual(wns_resolver.nc_password, self.mockNamecoinResolver.call_args[1]['password'])
+        self.assertEqual(wns_resolver.nc_port, self.mockNamecoinResolver.call_args[1]['port'])
+        self.assertEqual(wns_resolver.nc_tmpdir, self.mockNamecoinResolver.call_args[1]['temp_dir'])
+
+    def test_namecoin_import_error(self):
+
+        self.mockNamecoinResolver.side_effect = ImportError()
+
+        wns_resolver = WalletNameResolver()
+        self.assertRaises(WalletNameNamecoinUnavailable, wns_resolver.resolve_available_currencies, 'wallet.mattdavid.bit')
+        self.assertEqual(1, self.mockNamecoinResolver.call_count)
+
 
 class TestResolveWalletName(TestCase):
 
