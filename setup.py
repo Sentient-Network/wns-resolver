@@ -3,7 +3,8 @@ __author__ = 'mdavid'
 from setuptools import setup
 
 install_requires = [
-    'dnspython>=1.12.0'
+    'dnspython>=1.12.0',
+    'requests>=2.5.1'
 ]
 
 test_requires = [
@@ -12,7 +13,7 @@ test_requires = [
 
 setup(
     name='wnsresolver',
-    version='0.0.7',
+    version='0.0.8',
     packages=['wnsresolver'],
     install_requires=install_requires,
     tests_require=test_requires,

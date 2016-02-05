@@ -105,6 +105,15 @@ class TestResolveAvailableCurrencies(TestCase):
         self.assertEqual(['btc','ltc','dgc'], ret_val)
         self.assertEqual(1, self.mockWnsResolver.call_count)
 
+    def test_go_right_email_format(self):
+
+        wns_resolver = WalletNameResolver()
+        ret_val = wns_resolver.resolve_available_currencies('wallet@mattdavid.xyz')
+
+        self.assertEqual('_wallet.9e9285c79443cf2c0f868b0216308fb0e3ffeb45ade2c10ac67147f5.mattdavid.xyz', self.mockWnsResolver.call_args[0][0])
+        self.assertEqual(['btc','ltc','dgc'], ret_val)
+        self.assertEqual(1, self.mockWnsResolver.call_count)
+
     def test_no_name(self):
 
         wns_resolver = WalletNameResolver()
@@ -167,6 +176,17 @@ class TestResolveWalletName(TestCase):
 
         self.assertEqual('23456789MgDBffBffBff', ret_val)
         self.assertEqual(2, self.mockWnsResolver.call_count)
+
+    def test_go_right_email_format(self):
+
+        wns_resolver = WalletNameResolver()
+        ret_val = wns_resolver.resolve_wallet_name('wallet@mattdavid.xyz', 'btc')
+
+        self.assertEqual('_wallet.9e9285c79443cf2c0f868b0216308fb0e3ffeb45ade2c10ac67147f5.mattdavid.xyz', self.mockWnsResolver.call_args_list[0][0][0])
+        self.assertEqual('_btc._wallet.9e9285c79443cf2c0f868b0216308fb0e3ffeb45ade2c10ac67147f5.mattdavid.xyz', self.mockWnsResolver.call_args_list[1][0][0])
+        self.assertEqual('23456789MgDBffBffBff', ret_val)
+        self.assertEqual(2, self.mockWnsResolver.call_count)
+
 
     def test_no_name(self):
 
@@ -242,6 +262,13 @@ class TestResolve(TestCase):
 
         self.mockRequests.get.return_value.text = 'test response text'
         self.mockRequest.access_route = ['8.8.8.8']
+
+    def tearDown(self):
+        self.patcher1.stop()
+        self.patcher2.stop()
+        self.patcher3.stop()
+        self.patcher4.stop()
+        self.patcher5.stop()
 
     def test_go_right_startswith_bitcoin_uri(self):
 
@@ -453,6 +480,9 @@ class TestGetEndpointHost(TestCase):
         self.patcher1 = patch('wnsresolver.socket')
         self.mockSocket = self.patcher1.start()
 
+    def tearDown(self):
+        self.patcher1.stop()
+
     def test_go_right_valid_hostname(self):
 
         wns_resolver = WalletNameResolver()
@@ -512,3 +542,23 @@ class TestGetEndpointHost(TestCase):
 
         self.assertIsNone(return_url)
         self.assertEqual('https://192.168.100.1/pr/uuid', return_data)
+
+class TestPreprocessName(TestCase):
+
+    def test_no_change(self):
+
+        wns_resolver = WalletNameResolver()
+        name = wns_resolver.preprocess_name('wallet.domain.com')
+        self.assertEqual('wallet.domain.com', name)
+
+    def test_email_walletname(self):
+
+        wns_resolver = WalletNameResolver()
+        name = wns_resolver.preprocess_name('wallet@domain.com')
+        self.assertEqual('9e9285c79443cf2c0f868b0216308fb0e3ffeb45ade2c10ac67147f5.domain.com', name)
+
+    def test_email_with_multiple_at_signs(self):
+
+        wns_resolver = WalletNameResolver()
+        name = wns_resolver.preprocess_name('wallet@wallet@domain.com')
+        self.assertEqual('9e9285c79443cf2c0f868b0216308fb0e3ffeb45ade2c10ac67147f5.wallet@domain.com', name)

@@ -1,5 +1,6 @@
 __author__ = 'mdavid'
 
+import hashlib
 import iptools
 import os
 import re
@@ -8,7 +9,7 @@ import socket
 from base64 import b64decode
 from dns import rdatatype
 from flask import request
-from unbound import ub_ctx, RR_TYPE_TXT, RR_CLASS_IN
+from unbound import ub_ctx, RR_CLASS_IN
 from urlparse import urlparse
 
 
@@ -75,7 +76,7 @@ class WalletNameResolver:
             resolver = self
 
         # Resolve Top-Level Available Currencies
-        currency_list_str = resolver.resolve('_wallet.%s' % name, 'TXT')
+        currency_list_str = resolver.resolve('_wallet.%s' % self.preprocess_name(name), 'TXT')
         if not currency_list_str:
             return []
         return currency_list_str.split()
@@ -104,6 +105,8 @@ class WalletNameResolver:
         else:
             # Default ICANN Resolution
             resolver = self
+
+        name = self.preprocess_name(name)
 
         # Resolve Top-Level Available Currencies
         currency_list_str = resolver.resolve('_wallet.%s' % name, 'TXT')
@@ -201,6 +204,15 @@ class WalletNameResolver:
             return None, b64txt
 
         return url.geturl(), None
+
+    def preprocess_name(self, name):
+
+        # Process Names in E-Mail Address Format (RFCs 2822 & 6530)
+        if '@' in name:
+            localpart, domain = name.split('@', 1)
+            name = '%s.%s' % (hashlib.sha224(localpart).hexdigest(), domain)
+
+        return name
 
 
 if __name__ == '__main__':
